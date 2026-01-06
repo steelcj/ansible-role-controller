@@ -122,9 +122,12 @@ pip install --upgrade pip setuptools wheel
 
 echo
 echo "Available ansible-core versions:"
-pip index versions ansible-core | sed -n '1,3p'
 
-LATEST_VERSION="$(pip index versions ansible-core | head -n1 | awk '{print $2}' | tr -d '()')"
+PIP_VERSIONS_OUTPUT="$(pip index versions ansible-core)"
+
+echo "${PIP_VERSIONS_OUTPUT}" | sed -n '1,3p'
+
+LATEST_VERSION="$(echo "${PIP_VERSIONS_OUTPUT}" | head -n1 | awk '{print $2}' | tr -d '()')"
 
 if [ -z "${LATEST_VERSION}" ]; then
   echo "ERROR: Unable to determine latest ansible-core version."
@@ -135,20 +138,22 @@ fi
 echo
 echo "No ansible-core version specified."
 echo "Suggested latest stable: ${LATEST_VERSION}"
-read -r -p "Use this version? [Y/n] " response
+read -r -p "Press Enter to accept, enter a version, or 'n' to abort: " response
 
-case "${response:-Y}" in
-  [nN]*)
-    echo "Aborted by user."
-    deactivate
-    exit 1
-    ;;
-esac
+if [[ -z "${response}" ]]; then
+  SELECTED_VERSION="${LATEST_VERSION}"
+elif [[ "${response}" =~ ^[nNqQ]$ ]]; then
+  echo "Aborted by user."
+  deactivate
+  exit 1
+else
+  SELECTED_VERSION="${response}"
+fi
 
-pip install "ansible-core==${LATEST_VERSION}"
+pip install "ansible-core==${SELECTED_VERSION}"
 
 echo
-echo "ansible-core ${LATEST_VERSION} installed in ephemeral environment."
+echo "ansible-core ${SELECTED_VERSION} installed in ephemeral environment."
 echo
 
 # ------------------------------------------------------------------------------
