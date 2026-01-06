@@ -27,7 +27,6 @@
 #
 
 set -euo pipefail
-trap '' PIPE
 
 # ==============================================================================
 # Ansible Controller Bootstrap Script
