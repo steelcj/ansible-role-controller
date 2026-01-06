@@ -1,0 +1,5 @@
+---
+# tasks file for roles/controller_base
+- import_tasks: venv.yml
+- import_tasks: layout.yml
+- import_tasks: manifest.yml

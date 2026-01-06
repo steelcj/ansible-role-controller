@@ -1,0 +1,6 @@
+---
+- name: Ensure controller project root exists
+  file:
+    path: "{{ controller.project_root }}"
+    state: directory
+    mode: "0755"

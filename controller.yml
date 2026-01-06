@@ -1,0 +1,11 @@
+---
+- name: Create permanent Ansible controller
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    ansible_inventory_sources: ["localhost"]
+
+  roles:
+    - role: controller_base
