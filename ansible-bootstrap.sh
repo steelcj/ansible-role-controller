@@ -108,7 +108,13 @@ echo "Available ansible-core versions:"
 pip index versions ansible-core | sed 's/^/  /'
 
 INSTALLED_VERSION=""
-LATEST_VERSION="$(pip index versions ansible-core | awk -F'[()]' '/LATEST/ {print $2}')"
+#LATEST_VERSION="$(pip index versions ansible-core | awk -F'[()]' '/LATEST/ {print $2}')"
+LATEST_VERSION="$(pip index versions ansible-core | head -n1 | awk '{print $2}' | tr -d '()')"
+
+if [ -z "${LATEST_VERSION}" ]; then
+  echo "ERROR: Unable to determine latest ansible-core version."
+  exit 1
+fi
 
 echo
 echo "No ansible-core version specified."
