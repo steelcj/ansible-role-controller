@@ -43,21 +43,6 @@ set -euo pipefail
 # - Modify existing repositories
 # - Assume developer credentials
 # ==============================================================================
-if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-  cat <<EOF
-Usage: ./ansible-bootstrap.sh
-
-This script:
-  - prepares a workspace
-  - ensures the controller scaffold is present
-  - creates an ephemeral Ansible environment
-
-It does not run controller.yml.
-
-Run with no arguments to begin bootstrapping.
-EOF
-  exit 0
-fi
 
 REPO_NAME="ansible-role-controller"
 REPO_URL="https://github.com/steelcj/ansible-role-controller.git"
