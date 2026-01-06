@@ -26,12 +26,24 @@
 # See <https://www.gnu.org/licenses/>.
 #
 
-#!/usr/bin/env bash
+set -euo pipefail
+trap '' PIPE
 
-# ------------------------------------------------------------------------------
-# Early argument handling (must come first, no side effects)
-# ------------------------------------------------------------------------------
-
+# ==============================================================================
+# Ansible Controller Bootstrap Script
+#
+# Responsibilities:
+# - Operate in the current working directory as the workspace
+# - Ensure the controller scaffold repository is present
+# - Create an ephemeral Ansible virtual environment
+# - Install a selected ansible-core version
+# - Hand control back to the operator explicitly
+#
+# This script does NOT:
+# - Run controller.yml
+# - Modify existing repositories
+# - Assume developer credentials
+# ==============================================================================
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   cat <<EOF
 Usage: ./ansible-bootstrap.sh
@@ -39,27 +51,14 @@ Usage: ./ansible-bootstrap.sh
 This script:
   - prepares a workspace
   - ensures the controller scaffold is present
-  - creates an ephemeral Ansible execution environment
+  - creates an ephemeral Ansible environment
 
-It does NOT:
-  - run controller.yml
-  - modify controller state
+It does not run controller.yml.
 
 Run with no arguments to begin bootstrapping.
 EOF
   exit 0
 fi
-
-# ------------------------------------------------------------------------------
-# Safety and shell behavior
-# ------------------------------------------------------------------------------
-
-set -euo pipefail
-trap '' PIPE
-
-# ==============================================================================
-# Ansible Controller Bootstrap Script
-# ==============================================================================
 
 REPO_NAME="ansible-role-controller"
 REPO_URL="https://github.com/steelcj/ansible-role-controller.git"
@@ -122,13 +121,14 @@ pip install --upgrade pip setuptools wheel
 
 echo
 echo "Available ansible-core versions:"
-pip index versions ansible-core | sed -n '1,3p'
+pip index versions ansible-core | sed 's/^/  /'
 
+INSTALLED_VERSION=""
+#LATEST_VERSION="$(pip index versions ansible-core | awk -F'[()]' '/LATEST/ {print $2}')"
 LATEST_VERSION="$(pip index versions ansible-core | head -n1 | awk '{print $2}' | tr -d '()')"
 
 if [ -z "${LATEST_VERSION}" ]; then
   echo "ERROR: Unable to determine latest ansible-core version."
-  deactivate
   exit 1
 fi
 
@@ -146,9 +146,10 @@ case "${response:-Y}" in
 esac
 
 pip install "ansible-core==${LATEST_VERSION}"
+INSTALLED_VERSION="${LATEST_VERSION}"
 
 echo
-echo "ansible-core ${LATEST_VERSION} installed in ephemeral environment."
+echo "ansible-core ${INSTALLED_VERSION} installed in ephemeral environment."
 echo
 
 # ------------------------------------------------------------------------------
@@ -168,7 +169,7 @@ Next steps (run explicitly):
   cd ${WORKSPACE}/${REPO_NAME}
   ansible-playbook controller.yml \\
     -e controller_env=dev \\
-    -e controller_ansible_core_version=${LATEST_VERSION}
+    -e controller_ansible_core_version=${INSTALLED_VERSION}
 
 Notes:
 - The virtual environment is ephemeral and located in /tmp
@@ -176,4 +177,3 @@ Notes:
 - Controller construction has NOT started yet
 
 EOF
-
