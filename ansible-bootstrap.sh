@@ -173,7 +173,7 @@ Next steps (run explicitly):
   cd ${WORKSPACE}/${REPO_NAME}
   ansible-playbook controller.yml \\
     -e controller_env=dev \\
-    -e controller_ansible_core_version=${LATEST_VERSION}
+    -e controller_ansible_core_version=${SELECTED_VERSION}
 
 Notes:
 - The virtual environment is ephemeral and located in /tmp
