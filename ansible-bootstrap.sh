@@ -34,18 +34,18 @@
 
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   cat <<EOF
-Usage: ./ansible-bootstrap.sh
+Usage: ./ansible-bootstrap.sh [options]
 
-This script:
-  - prepares a workspace
-  - ensures the controller scaffold is present
-  - creates an ephemeral Ansible execution environment
+Options:
+  --ansible-core <version>   Explicit ansible-core version
+  --bootstrap-controller     Run Ansible scaffold to construct a controller
+  --env <name>               Controller environment (default: dev)
+  --help                     Show this help and exit
 
-It does NOT:
-  - run controller.yml
-  - modify controller state
-
-Run with no arguments to begin bootstrapping.
+Default behavior (no options):
+  - Create an ephemeral Ansible virtual environment in /tmp
+  - Install ansible-core
+  - Exit without cloning repositories or running playbooks
 EOF
   exit 0
 fi
@@ -57,22 +57,49 @@ fi
 set -euo pipefail
 trap '' PIPE
 
-# ==============================================================================
-# Ansible Controller Bootstrap Script
-# ==============================================================================
+# ------------------------------------------------------------------------------
+# Variable Defaults
+# ------------------------------------------------------------------------------
+
+BOOTSTRAP_CONTROLLER=false
+CONTROLLER_ENV="dev"
+ANSIBLE_CORE_VERSION=""
 
 REPO_NAME="ansible-role-controller"
 REPO_URL="https://github.com/steelcj/ansible-role-controller.git"
 VENV_PATH="/tmp/ve-ansible"
-
 WORKSPACE="$(pwd)"
 
-echo "Workspace:"
-echo "  ${WORKSPACE}"
-echo
+# ------------------------------------------------------------------------------
+# Argument Parsing
+# ------------------------------------------------------------------------------
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --bootstrap-controller)
+      BOOTSTRAP_CONTROLLER=true
+      shift
+      ;;
+    --env)
+      CONTROLLER_ENV="${2:-}"
+      shift 2
+      ;;
+    --ansible-core)
+      ANSIBLE_CORE_VERSION="${2:-}"
+      shift 2
+      ;;
+    --help|-h)
+      shift
+      ;;
+    *)
+      echo "ERROR: Unknown option: $1"
+      exit 1
+      ;;
+  esac
+done
 
 # ------------------------------------------------------------------------------
-# Ensure required OS-level tools exist
+# Environment checks
 # ------------------------------------------------------------------------------
 
 for cmd in python3 git curl wget; do
@@ -82,19 +109,8 @@ for cmd in python3 git curl wget; do
   fi
 done
 
-# ------------------------------------------------------------------------------
-# Ensure controller scaffold repository exists
-# ------------------------------------------------------------------------------
-
-if [ ! -d "${WORKSPACE}/${REPO_NAME}" ]; then
-  echo "Controller scaffold repository not found."
-  echo "Cloning ${REPO_NAME} into workspace..."
-  git clone "${REPO_URL}" "${WORKSPACE}/${REPO_NAME}"
-else
-  echo "Controller scaffold repository already present:"
-  echo "  ${WORKSPACE}/${REPO_NAME}"
-fi
-
+echo "Workspace:"
+echo "  ${WORKSPACE}"
 echo
 
 # ------------------------------------------------------------------------------
@@ -102,8 +118,6 @@ echo
 # ------------------------------------------------------------------------------
 
 if [ -d "${VENV_PATH}" ]; then
-  echo "Removing existing ephemeral Ansible environment:"
-  echo "  ${VENV_PATH}"
   rm -rf "${VENV_PATH}"
 fi
 
@@ -120,34 +134,35 @@ pip install --upgrade pip setuptools wheel
 # ansible-core version selection
 # ------------------------------------------------------------------------------
 
-echo
-echo "Available ansible-core versions:"
-
-PIP_VERSIONS_OUTPUT="$(pip index versions ansible-core)"
-
-echo "${PIP_VERSIONS_OUTPUT}" | sed -n '1,3p'
-
-LATEST_VERSION="$(echo "${PIP_VERSIONS_OUTPUT}" | head -n1 | awk '{print $2}' | tr -d '()')"
-
-if [ -z "${LATEST_VERSION}" ]; then
-  echo "ERROR: Unable to determine latest ansible-core version."
-  deactivate
-  exit 1
-fi
-
-echo
-echo "No ansible-core version specified."
-echo "Suggested latest stable: ${LATEST_VERSION}"
-read -r -p "Press Enter to accept, enter a version, or 'n' to abort: " response
-
-if [[ -z "${response}" ]]; then
-  SELECTED_VERSION="${LATEST_VERSION}"
-elif [[ "${response}" =~ ^[nNqQ]$ ]]; then
-  echo "Aborted by user."
-  deactivate
-  exit 1
+if [[ -n "${ANSIBLE_CORE_VERSION}" ]]; then
+  SELECTED_VERSION="${ANSIBLE_CORE_VERSION}"
 else
-  SELECTED_VERSION="${response}"
+  echo
+  echo "Available ansible-core versions:"
+  PIP_VERSIONS_OUTPUT="$(pip index versions ansible-core)"
+  echo "${PIP_VERSIONS_OUTPUT}" | sed -n '1,3p'
+
+  LATEST_VERSION="$(echo "${PIP_VERSIONS_OUTPUT}" | head -n1 | awk '{print $2}' | tr -d '()')"
+
+  if [ -z "${LATEST_VERSION}" ]; then
+    echo "ERROR: Unable to determine latest ansible-core version."
+    deactivate
+    exit 1
+  fi
+
+  echo
+  echo "Suggested latest stable: ${LATEST_VERSION}"
+  read -r -p "Press Enter to accept, enter a version, or 'n' to abort: " response
+
+  if [[ -z "${response}" ]]; then
+    SELECTED_VERSION="${LATEST_VERSION}"
+  elif [[ "${response}" =~ ^[nNqQ]$ ]]; then
+    echo "Aborted by user."
+    deactivate
+    exit 1
+  else
+    SELECTED_VERSION="${response}"
+  fi
 fi
 
 pip install "ansible-core==${SELECTED_VERSION}"
@@ -157,7 +172,27 @@ echo "ansible-core ${SELECTED_VERSION} installed in ephemeral environment."
 echo
 
 # ------------------------------------------------------------------------------
-# Handoff
+# Optional controller bootstrap
+# ------------------------------------------------------------------------------
+
+if [[ "${BOOTSTRAP_CONTROLLER}" == true ]]; then
+  if [ ! -d "${WORKSPACE}/${REPO_NAME}" ]; then
+    echo "Cloning controller scaffold repository..."
+    git clone "${REPO_URL}" "${WORKSPACE}/${REPO_NAME}"
+  fi
+
+  cd "${WORKSPACE}/${REPO_NAME}"
+
+  ansible-playbook controller.yml \
+    -e controller_env="${CONTROLLER_ENV}" \
+    -e controller_ansible_core_version="${SELECTED_VERSION}"
+
+  deactivate
+  exit 0
+fi
+
+# ------------------------------------------------------------------------------
+# Default exit / handoff
 # ------------------------------------------------------------------------------
 
 deactivate
@@ -165,20 +200,13 @@ deactivate
 cat <<EOF
 
 Bootstrap complete.
-Ephemeral Ansible environment has been created.
 
-Next steps (run explicitly):
+Ephemeral Ansible environment created:
+  ${VENV_PATH}
+
+To use it:
 
   source ${VENV_PATH}/bin/activate
-  cd ${WORKSPACE}/${REPO_NAME}
-  ansible-playbook controller.yml \\
-    -e controller_env=dev \\
-    -e controller_ansible_core_version=${SELECTED_VERSION}
 
-Notes:
-- The virtual environment is ephemeral and located in /tmp
-- The controller scaffold repository has not been modified
-- Controller construction has NOT started yet
-
+No controller scaffold was run.
 EOF
-
