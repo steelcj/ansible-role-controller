@@ -1,7 +1,7 @@
 ---
 # defaults file for roles/controller_base
 controller_env: "dev"
+controller_ansible_core_version: "2.20.1"
 
-controller_ansible_core_version: "{{ controller_ansible_core_version }}"
 controller_venv_root: "~/.venvs/ansible/{{ controller_ansible_core_version }}/{{ controller_env }}"
 controller_project_root: "~/projects/ansible/{{ controller_ansible_core_version }}/{{ controller_env }}"
