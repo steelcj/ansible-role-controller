@@ -1,5 +1,5 @@
 ---
-- name: Create permanent Ansible controller
+- name: "Create permanent Ansible controller"
   hosts: localhost
   connection: local
   gather_facts: true
@@ -11,8 +11,8 @@
     - role: controller_base
 
 
-post_tasks:
-    - name: Controller creation summary
+  post_tasks:
+    - name: "Controller creation summary"
       ansible.builtin.debug:
         msg:
           - "Controller created successfully."
