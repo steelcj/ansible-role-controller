@@ -27,28 +27,6 @@
 #
 
 #!/usr/bin/env bash
-#
-# ansible-bootstrap.sh
-#
-# Ephemeral Ansible bootstrap script.
-#
-# Provides a temporary Ansible execution environment and optionally
-# runs an Ansible scaffold (controller bootstrap playbook + roles)
-# to construct a persistent Ansible controller.
-#
-# NOTE:
-# This script is NOT the controller.
-# The scaffold constructs the controller and may be discarded after use.
-#
-# Copyright (C) 2026 Christopher Steel
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# See <https://www.gnu.org/licenses/>.
-#
 
 # ------------------------------------------------------------------------------
 # Early argument handling (must come first, no side effects)
@@ -62,7 +40,6 @@ Options:
   --ansible-core <version>   Explicit ansible-core version
   --bootstrap-controller     Run Ansible scaffold to construct a controller
   --env <name>               Controller environment (default: dev)
-  --dry-run                  Print resolved paths and exit without changes
   --help                     Show this help and exit
 
 Default behavior (no options):
@@ -85,7 +62,6 @@ trap '' PIPE
 # ------------------------------------------------------------------------------
 
 BOOTSTRAP_CONTROLLER=false
-DRY_RUN=false
 CONTROLLER_ENV="dev"
 ANSIBLE_CORE_VERSION=""
 
@@ -102,10 +78,6 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --bootstrap-controller)
       BOOTSTRAP_CONTROLLER=true
-      shift
-      ;;
-    --dry-run)
-      DRY_RUN=true
       shift
       ;;
     --env)
@@ -142,52 +114,6 @@ echo "  ${WORKSPACE}"
 echo
 
 # ------------------------------------------------------------------------------
-# Determine ansible-core version
-# ------------------------------------------------------------------------------
-
-if [[ -n "${ANSIBLE_CORE_VERSION}" ]]; then
-  SELECTED_VERSION="${ANSIBLE_CORE_VERSION}"
-else
-  echo "ERROR: --ansible-core <version> is required (non-interactive mode enforced)."
-  exit 1
-fi
-
-# ------------------------------------------------------------------------------
-# Derived controller paths (declarative, no side effects)
-# ------------------------------------------------------------------------------
-
-CONTROLLER_PROJECT_ROOT="${HOME}/projects/ansible/${SELECTED_VERSION}/${CONTROLLER_ENV}"
-CONTROLLER_VENV_ROOT="${HOME}/.venvs/${CONTROLLER_ENV}/ansible/${SELECTED_VERSION}"
-
-# ------------------------------------------------------------------------------
-# Print installation plan (always visible)
-# ------------------------------------------------------------------------------
-
-echo "Controller installation plan:"
-echo "  Environment:           ${CONTROLLER_ENV}"
-echo "  Ansible Core version:  ${SELECTED_VERSION}"
-echo
-echo "Ephemeral Ansible environment:"
-echo "  ${VENV_PATH}"
-echo
-echo "Permanent controller:"
-echo "  Project root: ${CONTROLLER_PROJECT_ROOT}"
-echo "  Virtualenv:   ${CONTROLLER_VENV_ROOT}"
-echo
-
-# ------------------------------------------------------------------------------
-# Dry-run exit (no side effects beyond printing)
-# ------------------------------------------------------------------------------
-
-if [[ "${DRY_RUN}" == true ]]; then
-  echo "Dry-run mode enabled."
-  echo "No virtual environments created."
-  echo "No packages installed."
-  echo "No Ansible playbooks executed."
-  exit 0
-fi
-
-# ------------------------------------------------------------------------------
 # Create ephemeral Ansible virtual environment
 # ------------------------------------------------------------------------------
 
@@ -197,13 +123,48 @@ fi
 
 echo "Creating ephemeral Ansible virtual environment:"
 echo "  ${VENV_PATH}"
-
 python3 -m venv "${VENV_PATH}"
 
 # shellcheck disable=SC1091
 source "${VENV_PATH}/bin/activate"
 
 pip install --upgrade pip setuptools wheel
+
+# ------------------------------------------------------------------------------
+# ansible-core version selection
+# ------------------------------------------------------------------------------
+
+if [[ -n "${ANSIBLE_CORE_VERSION}" ]]; then
+  SELECTED_VERSION="${ANSIBLE_CORE_VERSION}"
+else
+  echo
+  echo "Available ansible-core versions:"
+  PIP_VERSIONS_OUTPUT="$(pip index versions ansible-core)"
+  echo "${PIP_VERSIONS_OUTPUT}" | sed -n '1,3p'
+
+  LATEST_VERSION="$(echo "${PIP_VERSIONS_OUTPUT}" | head -n1 | awk '{print $2}' | tr -d '()')"
+
+  if [ -z "${LATEST_VERSION}" ]; then
+    echo "ERROR: Unable to determine latest ansible-core version."
+    deactivate
+    exit 1
+  fi
+
+  echo
+  echo "Suggested latest stable: ${LATEST_VERSION}"
+  read -r -p "Press Enter to accept, enter a version, or 'n' to abort: " response
+
+  if [[ -z "${response}" ]]; then
+    SELECTED_VERSION="${LATEST_VERSION}"
+  elif [[ "${response}" =~ ^[nNqQ]$ ]]; then
+    echo "Aborted by user."
+    deactivate
+    exit 1
+  else
+    SELECTED_VERSION="${response}"
+  fi
+fi
+
 pip install "ansible-core==${SELECTED_VERSION}"
 
 echo
@@ -224,9 +185,7 @@ if [[ "${BOOTSTRAP_CONTROLLER}" == true ]]; then
 
   ansible-playbook controller.yml \
     -e controller_env="${CONTROLLER_ENV}" \
-    -e controller_ansible_core_version="${SELECTED_VERSION}" \
-    -e controller_project_root="${CONTROLLER_PROJECT_ROOT}" \
-    -e controller_venv_root="${CONTROLLER_VENV_ROOT}"
+    -e controller_ansible_core_version="${SELECTED_VERSION}"
 
   deactivate
   exit 0
@@ -251,4 +210,3 @@ To use it:
 
 No controller scaffold was run.
 EOF
-
