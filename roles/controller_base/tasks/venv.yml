@@ -1,13 +1,13 @@
 ---
 - name: Ensure controller venv root exists
   file:
-    path: "{{ controller.venv_root }}"
+    path: "{{ controller_venv_root }}"
     state: directory
     mode: "0755"
 
 - name: Ensure versioned Ansible virtualenv exists
   pip:
-    virtualenv: "{{ controller.venv_root }}/{{ controller.ansible_core_version }}"
+    virtualenv: "{{ controller_venv_root }}/{{ controller_ansible_core_version }}"
     virtualenv_command: python3 -m venv
     name:
-      - "ansible-core=={{ controller.ansible_core_version }}"
+      - "ansible-core=={{ controller_ansible_core_version }}"

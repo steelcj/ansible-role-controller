@@ -1,7 +1,7 @@
 ---
 - name: Write controller manifest
   copy:
-    dest: "{{ controller.project_root }}/controller.manifest.yml"
+    dest: "{{ controller_project_root }}/controller_manifest.yml"
     mode: "0644"
     content: |
       kind: "ansible-controller"
@@ -9,9 +9,9 @@
 
       controller:
         environment: "{{ controller_env }}"
-        ansible_core_version: "{{ controller.ansible_core_version }}"
-        venv_path: "{{ controller.venv_root }}/{{ controller.ansible_core_version }}"
-        project_root: "{{ controller.project_root }}"
+        ansible_core_version: "{{ controller_ansible_core_version }}"
+        venv_path: "{{ controller_venv_root }}/{{ controller_ansible_core_version }}"
+        project_root: "{{ controller_project_root }}"
 
       provenance:
         created: "{{ ansible_facts['date_time']['iso8601'] }}"
