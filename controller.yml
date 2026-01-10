@@ -10,9 +10,15 @@
   roles:
     - role: controller_base
 
+- name: Create permanent Ansible controller
+  hosts: localhost
+  gather_facts: true
+
+  roles:
+    - controller_base
 
   post_tasks:
-    - name: "Controller creation summary"
+    - name: Controller creation summary
       ansible.builtin.debug:
         msg:
           - "Controller created successfully."
@@ -21,3 +27,4 @@
           - "Controller project root: {{ controller_project_root }}"
           - "Controller virtualenv: {{ controller_venv_root }}"
           - "Controller manifest: {{ controller_project_root }}/CONTROLLER.yml"
+
