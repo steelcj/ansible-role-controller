@@ -1,5 +1,42 @@
 ---
 # tasks file for roles/controller_base
-- import_tasks: venv.yml
-- import_tasks: layout.yml
-- import_tasks: manifest.yml
+
+# venvs
+- name: Ensure that the ansible controller venv path exists
+  file:
+    path: "{{ controller_venv_path }}"
+    state: directory
+    mode: "0755"
+
+- name: Ensure versioned Ansible virtualenv exists
+  pip:
+    virtualenv: "{{ controller_venv_path }}"
+    virtualenv_command: python3 -m venv
+    name:
+      - "ansible-core=={{ controller_ansible_core_version }}"
+
+# layout
+- name: Ensure controller project root exists
+  file:
+    path: "{{ controller_project_path }}"
+    state: directory
+    mode: "0755"
+
+# Ensure for manifest
+- name: Ensure we write controller manifest
+  copy:
+    dest: "{{ controller_project_path }}/controller_manifest.yml"
+    mode: "0644"
+    content: |
+      kind: "ansible-controller"
+      schema_version: "1.0"
+
+      controller:
+        environment: "{{ controller_env }}"
+        ansible_core_version: "{{ controller_ansible_core_version }}"
+        venv_path: "{{ controller_venv_path }}/{{ controller_ansible_core_version }}"
+        project_root: "{{ controller_project_path }}"
+
+      provenance:
+        created: "{{ ansible_facts['date_time']['iso8601'] }}"
+        host: "{{ ansible_facts['hostname'] }}"
