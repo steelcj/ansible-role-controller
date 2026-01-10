@@ -10,12 +10,14 @@
   roles:
     - role: controller_base
 
-- name: Controller creation summary
-  ansible.builtin.debug:
-    msg:
-      - "Controller created successfully."
-      - "Environment: {{ controller_env }}"
-      - "Ansible Core version: {{ controller_ansible_core_version }}"
-      - "Controller project root: {{ controller_project_root }}"
-      - "Controller virtualenv: {{ controller_venv_root }}"
-      - "Controller manifest: {{ controller_project_root }}/CONTROLLER.yml"
+
+post_tasks:
+    - name: Controller creation summary
+      ansible.builtin.debug:
+        msg:
+          - "Controller created successfully."
+          - "Environment: {{ controller_env }}"
+          - "Ansible Core version: {{ controller_ansible_core_version }}"
+          - "Controller project root: {{ controller_project_root }}"
+          - "Controller virtualenv: {{ controller_venv_root }}"
+          - "Controller manifest: {{ controller_project_root }}/CONTROLLER.yml"
