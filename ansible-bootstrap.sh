@@ -90,7 +90,8 @@ CONTROLLER_ENV="dev"
 ANSIBLE_CORE_VERSION=""
 
 REPO_NAME="ansible-role-controller"
-REPO_URL="https://github.com/steelcj/ansible-role-controller.git"
+REPO_URL="git@github.com:steelcj/ansible-role-controller.git"
+#REPO_URL="https://github.com/steelcj/ansible-role-controller.git"
 VENV_PATH="/tmp/ve-ansible"
 WORKSPACE="$(pwd)"
 
@@ -157,7 +158,7 @@ fi
 # ------------------------------------------------------------------------------
 
 CONTROLLER_PROJECT_ROOT="${HOME}/projects/ansible/${SELECTED_VERSION}/${CONTROLLER_ENV}"
-CONTROLLER_VENV_ROOT="${HOME}/.venvs/${CONTROLLER_ENV}/ansible/${SELECTED_VERSION}"
+CONTROLLER_VENV_ROOT="${HOME}/.venvs/ansible/${SELECTED_VERSION}/${CONTROLLER_ENV}"
 
 # ------------------------------------------------------------------------------
 # Print installation plan (always visible)
